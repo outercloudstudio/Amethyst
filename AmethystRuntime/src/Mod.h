@@ -19,6 +19,8 @@ public:
 	Mod(std::string mod_name);
 	FARPROC GetFunction(const char* func_name);
 	void Free();
+	void UnzipMod(const std::string& path);
+	void UnzipModIfDoesNotExist(const std::string& path);
 
 private:
 	fs::path GetTempDll();

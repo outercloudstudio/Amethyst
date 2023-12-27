@@ -28,6 +28,20 @@ Mod::Mod(std::string mod_name) {
 	return;
 }
 
+void Mod::UnzipMod(const std::string& targetPath)
+{
+	Log::Info("Unzipping mod at {}\n", targetPath);
+
+	system(("powershell Expand-Archive -LiteralPath " + targetPath + ".zip -DestinationPath " + targetPath + " -ExecutionPolicy Unrestricted").c_str());
+}
+
+void Mod::UnzipModIfDoesNotExist(const std::string& path) {
+	if (fs::exists(path)) return;
+	if (!fs::exists(path + ".zip")) return;
+
+	UnzipMod(path);
+}
+
 FARPROC Mod::GetFunction(const char* func_name) {
 	return GetProcAddress(hModule, func_name);
 }
@@ -37,7 +51,7 @@ void Mod::Free() {
 }
 
 fs::path Mod::GetTempDll() {
-	std::string mod_shortened = mod_name; 
+	std::string mod_shortened = mod_name;
 	size_t atPos = mod_shortened.find("@");
 
 	if (atPos != std::string::npos) {
@@ -46,9 +60,13 @@ fs::path Mod::GetTempDll() {
 
 	// Ensure temp directory exists
 	fs::path temp_dir = GetAmethystFolder() + "temp/" + mod_name + "/";
+
 	if (!fs::exists(temp_dir)) fs::create_directories(temp_dir);
 
-	fs::path original_dll = GetAmethystFolder() + "mods/" + mod_name + "/" + mod_shortened + ".dll";
+	fs::path mod_directory = GetAmethystFolder() + "mods/" + mod_name;
+	UnzipModIfDoesNotExist(mod_directory.string());
+
+	fs::path original_dll = mod_directory.string() + "/" + mod_shortened + ".dll";
 	if (!fs::exists(original_dll)) {
 		Log::Error("[AmethystRuntime] Could not find '{}.dll'\n", mod_shortened);
 		throw std::exception();
