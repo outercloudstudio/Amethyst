@@ -1,5 +1,6 @@
 #include "Loader.h"
 #include <codecvt>
+#include <miniz.h>
 namespace fs = std::filesystem;
 
 void ReportIssue(LPCWSTR message) {
@@ -78,7 +79,7 @@ std::string ModLoader::GetAmethystPath()
 	return baseAmethystPath;
 }
 
-void ModLoader::getMinecraftWindowHandle()
+void ModLoader::GetMinecraftWindowHandle()
 {
     DWORD procID = GetProcessIdByName(L"Minecraft.Windows.exe");
     if (procID == 0)
@@ -93,6 +94,54 @@ void ModLoader::getMinecraftWindowHandle()
 
     HANDLE procHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, procID);
     mMinecraftWindowHandle = procHandle;
+}
+
+void ModLoader::UnzipMod(const std::string& targetPath)
+{
+    Log::Info("Unzipping mod at {}\n", targetPath);
+
+    mz_zip_archive zip_archive;
+    
+    mz_bool status = mz_zip_reader_init_file(&zip_archive, (targetPath + ".zip").c_str(), 0);
+
+    if (!status) {
+        printf("Failed to initialize zip reader. Error: %s\n", mz_zip_get_error_string(zip_archive.m_last_error));
+        return;
+    }
+
+    int archiveFileCount = mz_zip_reader_get_num_files(&zip_archive);
+
+    Log::Info("{}", archiveFileCount);
+
+    // for(int fileIndex = 0; fileIndex < archiveFileCount; fileIndex++) {
+    //     mz_zip_archive_file_stat file_stat;
+
+    //     if (!mz_zip_reader_file_stat(&zip_archive, fileIndex, &file_stat))
+    //     {   
+    //         Log::Error("Failed to read zipped file from mod at {}.zip", targetPath);
+
+    //         mz_zip_reader_end(&zip_archive);
+
+    //         return;
+    //     }
+
+    //     if(!mz_zip_reader_extract_file_to_file(&zip_archive, file_stat.m_filename, (targetPath + "/" + file_stat.m_filename).c_str(), 0)) {
+    //          Log::Error("Failed to write unzipped file from mod at {}.zip", targetPath);
+
+    //         mz_zip_reader_end(&zip_archive);
+
+    //         return;
+    //     } 
+    // }
+
+    // mz_zip_reader_end(&zip_archive);
+}
+
+void ModLoader::UnzipModIfDoesNotExist(const std::string& path) {
+    if(fs::exists(path)) return;
+    if(!fs::exists(path + ".zip")) return;
+
+    UnzipMod(path);
 }
 
 void ModLoader::InjectRuntime()
@@ -110,8 +159,12 @@ void ModLoader::InjectRuntime()
         fs::create_directories(mModsPath);
 	}
     
-    std::string runtimePath = fmt::format("{}/{}/{}.dll", mModsPath, mConfig.injectedMod, mod_shortened);
+    std::string runtimeModPath = fmt::format("{}/{}", mModsPath, mConfig.injectedMod);
+    std::string runtimePath = fmt::format("{}/{}.dll", runtimeModPath, mod_shortened);
     Log::Info("Runtime: {}\n", runtimePath);
+
+    // UnzipModIfDoesNotExist(runtimeModPath);
+    UnzipModIfDoesNotExist("C:/Users/liamh/AppData/Roaming/Amethyst/mods/AmethystRuntime@1.0.0");
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
@@ -121,7 +174,7 @@ void ModLoader::InjectRuntime()
 		std::abort();
 	}
 
-    getMinecraftWindowHandle();
+    GetMinecraftWindowHandle();
 
     InjectDLL(runtimePath);
 }	

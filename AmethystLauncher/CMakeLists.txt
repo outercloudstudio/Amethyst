@@ -11,7 +11,9 @@ set(AmethystFolder "$ENV{appdata}/Amethyst")
 find_library(AMETHYST_API AmethystAPI PATHS "${AmethystFolder}/lib")
 include_directories(${AmethystFolder}/include "include/")
 
-add_executable(AmethystLauncher src/AmethystLauncher.cpp src/loader/Loader.cpp)
+include_directories(libs/miniz)
+
+add_executable(AmethystLauncher src/AmethystLauncher.cpp src/loader/Loader.cpp libs/miniz/miniz.c libs/miniz/miniz.h)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${AMETHYST_API})
 target_link_libraries(${PROJECT_NAME} PRIVATE "${AmethystFolder}/lib/fmt.lib")
 target_link_libraries(${PROJECT_NAME} PRIVATE "${AmethystFolder}/lib/libMinHook.x64.lib")
